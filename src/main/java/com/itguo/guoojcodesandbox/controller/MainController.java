@@ -4,6 +4,8 @@ import com.itguo.guoojcodesandbox.JavaNativeCodeSandBox;
 import com.itguo.guoojcodesandbox.CNativeCodeSandBox;
 import com.itguo.guoojcodesandbox.model.ExecuteCodeRequest;
 import com.itguo.guoojcodesandbox.model.ExecuteCodeResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -13,46 +15,41 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * 代码沙箱主控制器
  */
+@Slf4j
 @RestController
 @RequestMapping
 public class MainController {
-    
-    // 鉴权相关常量
+
     public static final String AUTH_REQUEST_HEADER = "auth";
-    public static final String AUTH_REQUEST_SECRET = "secretKey";
+
+    @Value("${codesandbox.secret:secretKey}")
+    private String authSecret;
 
     @Resource
     private JavaNativeCodeSandBox javaNativeCodeSandBox;
-    
+
     @Resource
     private CNativeCodeSandBox cNativeCodeSandBox;
 
-    /**
-     * 健康检查接口
-     */
     @GetMapping("/health")
     public String healthCode() {
         return "OK";
     }
 
-    /**
-     * 代码执行接口
-     */
     @PostMapping("/execute")
-    public ExecuteCodeResponse executeMessage(@RequestBody ExecuteCodeRequest executeCodeRequest, 
+    public ExecuteCodeResponse executeMessage(@RequestBody ExecuteCodeRequest executeCodeRequest,
                                             HttpServletRequest httpServletRequest,
                                             HttpServletResponse httpServletResponse) {
-        
         // 1. 鉴权检查
         String authHeader = httpServletRequest.getHeader(AUTH_REQUEST_HEADER);
-        if (!AUTH_REQUEST_SECRET.equals(authHeader)) {
+        if (!authSecret.equals(authHeader)) {
             httpServletResponse.setStatus(403);
             ExecuteCodeResponse errorResponse = new ExecuteCodeResponse();
             errorResponse.setMessage("鉴权失败");
             errorResponse.setStatus(3);
             return errorResponse;
         }
-        
+
         // 2. 参数校验
         if (executeCodeRequest == null) {
             throw new RuntimeException("请求参数为空");
@@ -66,11 +63,11 @@ public class MainController {
         if (executeCodeRequest.getInputList() == null || executeCodeRequest.getInputList().isEmpty()) {
             throw new RuntimeException("输入用例为空");
         }
-        
+
         // 3. 根据语言类型选择对应的代码沙箱
         String language = executeCodeRequest.getLanguage().toLowerCase().trim();
-        System.out.println("收到代码执行请求: " + language);
-        
+        log.info("收到代码执行请求: {}", language);
+
         ExecuteCodeResponse executeCodeResponse;
         switch (language) {
             case "java":
@@ -82,13 +79,13 @@ public class MainController {
             default:
                 throw new RuntimeException("不支持的编程语言: " + language);
         }
-        
-        System.out.println("代码执行完成，状态: " + executeCodeResponse.getStatus());
-        
+
+        log.info("代码执行完成，状态: {}", executeCodeResponse.getStatus());
+
         if (executeCodeResponse == null) {
             throw new RuntimeException("代码执行返回结果为空");
         }
-        
+
         return executeCodeResponse;
     }
 }
