@@ -31,10 +31,7 @@ public class MainController {
     @Resource
     private CNativeCodeSandBox cNativeCodeSandBox;
 
-    @GetMapping("/health")
-    public String healthCode() {
-        return "OK";
-    }
+
 
     @PostMapping("/execute")
     public ExecuteCodeResponse executeMessage(@RequestBody ExecuteCodeRequest executeCodeRequest,
